@@ -1,0 +1,89 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '2.7.14'
+	id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+    id 'maven-publish'
+  	id 'pl.allegro.tech.build.axion-release' version '1.13.6'
+}
+
+group = 'ch.kochse.tools'
+version = scmVersion.version
+sourceCompatibility = '16'
+
+configurations {
+  compileOnly {
+    extendsFrom annotationProcessor
+  }
+}
+
+
+
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter'
+  implementation 'org.yaml:snakeyaml:2.1'
+	implementation 'com.squareup:javapoet:1.13.0'
+	implementation 'org.apache.commons:commons-lang3:3.15.0'
+  implementation 'com.fasterxml.jackson.core:jackson-annotations:2.10.1'
+  testImplementation 'com.google.truth:truth:1.4.4'
+	testImplementation 'org.junit.vintage:junit-vintage-engine:5.8.2'
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.8.2'
+  testImplementation 'org.yaml:snakeyaml:2.1'
+  testImplementation 'com.google.code.gson:gson:2.8.6'
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+java {
+	sourceCompatibility = '16'
+}
+java {
+    // toolchain {
+    //     languageVersion = JavaLanguageVersion.of(20)
+    // }
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+java {    
+	withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+
+publishing {
+    repositories {
+        maven {
+            url = project.kseNexusUrl + "/repository/kse-maven/"
+            credentials {
+                username = project.kseNexusUser
+                password = project.kseNexusPwd
+            }
+            allowInsecureProtocol = true
+        }
+    }
+    publications {
+        maven(MavenPublication) {
+            artifact 'build/libs/asyncapi-generator-' + scmVersion.version + '.jar'
+            group = 'ch.kochse.tools'
+            artifactId = 'asyncapi-generator'
+          pom {
+                name = "project.name"
+                description = "common library for plantit-components"
+                url = "https://www.kochse.ch/" + project.name 
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+            }
+        }
+    }
+}
+

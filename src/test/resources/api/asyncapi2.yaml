@@ -1,0 +1,145 @@
+asyncapi: 3.0.0
+id: 'https://kochse.ch/garden/common/events/api'
+info:
+  title: Garden Event Channel
+  version: '${currentVersion}'
+  description: |
+   General garden events published and consumed by the various components
+  contact:
+    email: andres.koch@kochse.ch
+    name: Andres Koch
+    url: 'https://www.kochse.ch'
+  license:
+    name: Apache 2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0'
+defaultContentType: application/json
+servers:
+  production:
+    host: 'ksemq.kochse.ch:41616'
+    protocol: amqp
+    description: message broker for garden
+channels:
+  GardenNotification:
+    address: 'T.garden.events'
+    messages:
+      GardenEvents:
+        $ref: '#/components/messages/GeneralGardenEvt'
+    bindings:
+      amqp:
+        is: routingKey
+        exchange: 
+          name: gardenNotifications
+          type: topic
+          durable: false
+          exclusive: false
+operations:
+  consume:
+    action: receive
+    channel: 
+      $ref:   '#/channels/GardenNotification'
+      messages:
+        - $ref: '#/components/messages/GeneralGardenEvt'
+  publish:
+    action: send
+    channel:
+      $ref: '#/channels/GardenNotification'
+      messages:
+        - $ref: '#/components/messages/GeneralGardenEvt'
+components:
+  messages:
+    GeneralGardenEvt:
+      name: GeneralGardenEvt
+      title: General Garden Event
+      summary: Used for general publishing of events by various garden compontents
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/GeneralGardenEvtDTO'
+  schemas:
+    GeneralGardenEvtDTO:
+      type: object
+      properties:
+        eventId:
+          type: string
+          description: uuid of event
+        eventType:
+          type: string
+          description: Type of event
+          $ref: '#/components/schemas/GardenEventType'
+        eventReference:
+          type: string
+          description: reference to some component or message
+        issuer:
+          type: string
+          description: component which emitted the event
+        timeIssued:
+          type: string
+          format: date-time
+          description: time the event was originated
+        additionalInfos:
+          description: Aditional properties which can be added to a garden event
+          type: array
+          items: 
+            $ref: '#/components/schemas/GardenProperty'
+    GardenProperty:
+      description: Generic information 
+      type: object
+      properties: 
+        key:
+          $ref: '#/components/schemas/GardenPropertyKey'
+        value:
+          description: Value of the property in a generic form. All types are represented in text form
+          type: string
+
+    GardenPropertyKey:
+      type: string
+      description: Predefinde keys used for garden properties
+      enum:
+        - GENERIC
+        - ERROR_MSG
+        - SENSOR
+        - VALVE
+        - PV_PANEL
+        - RELAY_NO
+        - HOST_ADDRESS
+        - HARDWARE_ADDRESS
+      default: GENERIC
+
+    GardenEventType:
+      type: string
+      enum:
+        - INFO
+        - ALERT
+        - WARNING
+        - COMPLETION
+        - PROGRESS
+        - START
+        - TERMINATION
+        - GENERIC
+      default: INFO
+      description: Type of event
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        required:
+          - correlation_id
+          - content_type
+          - version
+          - created_at
+        properties:
+          correlation_id:
+            description: Allows to link answer to a specific business item from which the request was emitted
+            type: string
+            example: '67d3ebbe-f72a-4ac2-b704-014ae297c655'
+          content_type:
+            type: string
+            example: 'application/json'
+          version:
+            description: Version of the message definition
+            type: string
+            example: '1.0.0'
+          created_at:
+            type: string
+            description: Timestamp when the message was created. ISO 8601 YYYY-MM-ddThh:mm:ss
+            example: '2021-02-21T14:50:00'

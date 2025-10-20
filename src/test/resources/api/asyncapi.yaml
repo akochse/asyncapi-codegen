@@ -1,0 +1,373 @@
+asyncapi: 2.6.0
+info:
+  title: Plantit-Greenhouse
+  version: '0.1.0'
+  description: |
+    Manages Greenhouse spaces, reservations and orders
+  contact: 
+    email: andres.koch@ost.ch
+    name: Andres Koch
+    url:  https://www.ost.ch
+  license:
+    name: Apache 2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0'
+servers: 
+  production:
+    url: 'tcp://masse-mq.dynu.net:41616'
+    protocol: amqp
+    description: message broker for MAS/SE ADS exercise
+
+
+channels:
+  'greenhouse/inquiry':
+    publish:
+      bindings:
+        amqp: 
+          name: 'T.plantit.prod.greenhouse.inquiry'
+          type: topic
+      operationId: reserve
+      message:
+        defaultContentType: application/json 
+        messageId: ReservationReqMsg
+        $ref: '#/components/messages/ReservationReqMsg'
+        response: 
+          messageId: ReservationRspMsg
+          $ref: '#/components/messages/ReservationRspMsg' 
+      
+  'greenhouse/request':
+    parameters:
+      greenhouseNo:
+        $ref: '#/components/parameters/greenhouse-no'
+    bindings:
+      amqp: 
+        name: 'Q.plantit.prod.greenhouse.{greenhouseNo}'
+        type:  queue
+    publish:
+      message:
+          oneOf:
+          - $ref: '#/components/messages/OrderReqMsg'
+            defaultContentType: application/json 
+            messageId: OrderReqMsg
+            operationId: order
+          - $ref: '#/components/messages/CancellationReqMsg'
+            messageId: CancellationReqMsg
+            defaultContentType: application/json 
+            operationId: cancel
+            response:
+              oneOf:
+                - $ref: '#/components/messages/OrderRspMsg'
+                  messageId: OrderRspMsg
+                - $ref: '#/components/messages/CancellationRspMsg'
+                  messageId: CancellationRspMsg
+  
+  'common/events':
+    bindings:
+      amqp: 
+        name: 'T.plantit.common.events'
+        type: topic
+    subscribe:
+      operationId: status
+      message:
+        messageId: StatusEvent
+        payload:
+          defaultContentType: application/json 
+          $ref: '#/components/messages/StatusEvent'
+components:
+  messages:
+    ReservationReqMsg:
+      messageId: ReservationReqMsg
+      name: Reservation Message
+      title: Greenhouse Reservation
+      summary: Inquiry of a reservation for growing some fruits or vegetables
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PlantingReservationReqDTO'    
+
+    ReservationRspMsg:
+      messageId: ReservationRspMsg
+      name: Reservation Message
+      title: Greenhouse Reservation
+      summary: Inquiry of a reservation for growing some fruits or vegetables
+      contentType: application/json
+      payload:
+          properties:
+            completion:
+              $ref: '#/components/schemas/CompletionData'
+              description: Error Code according documentation
+            data:
+              $ref: '#/components/schemas/PlantingReservationRspDTO'    
+        
+    OrderReqMsg:
+        messageId: OrderReqMsg
+        name: Order Message
+        title: Greenhouse Order
+        summary: Definitive order or change of a reservation to an order
+        contentType: application/json
+        payload:
+          $ref: '#/components/schemas/PlantingOrderReqDTO'
+ 
+    OrderRspMsg:
+        messageId: OrderRspMsg
+        name: Order Message
+        title: Greenhouse Order
+        summary: Definitive order or change of a reservation to an order
+        contentType: application/json
+        payload:
+          properties:
+            completion:
+              $ref: '#/components/schemas/CompletionData'
+              description: Error Code according documentation
+            data:
+              $ref: '#/components/schemas/PlantingOrderRspDTO'   
+           
+    CancellationReqMsg: 
+        messageId: CancellationReqMsg
+        name: Cancellation Message
+        title: Greenhouse Order or Reservation Cancellation
+        summary: Cancellation of a reservation or an order before the started state
+        contentType: application/json
+        payload:
+          $ref: '#/components/schemas/PlantingCancellationReqDTO'
+
+    CancellationRspMsg: 
+        messageId: CancellationRspMsg
+        name: Cancellation Message
+        title: Greenhouse Order or Reservation Cancellation
+        summary: Cancellation of a reservation or an order before the started state
+        contentType: application/json
+        payload:
+          properties:
+            completion:
+              $ref: '#/components/schemas/CompletionData'
+              description: Error Code according documentation
+            data:
+              $ref: '#/components/schemas/PlantingCancellationRspDTO'
+            
+    StatusEvent:
+        messageId: StatusEvent
+        name: StatusEvent
+        title: Greenhous emitted status events
+        summary: Status changes emitted by the greenhouse
+        contentType: application/json
+        payload:
+          $ref: '#/components/schemas/PlantingStatusEvtDTO'
+
+  schemas:
+    PlantingReservationReqDTO:
+      type: object
+      properties:
+        inquiryId: 
+          type: string
+          description: 'uuid to correlate the reservation to one order'
+        productId:
+          type: string
+          description: 'product identifier'
+        productname: 
+          type: string
+          description: 'short description such as name of the product'
+        planedDeliver:
+          type: string
+          format: date-time
+          description: 'requested delivery date of the amount of the product'
+        requiredQty: 
+          type: number
+          description: 'requested quantity of product to grow and deliver'
+        reservedQty:
+          type: number
+          description: 'effectively reserved quanity. 0 means minimalQty cannot be satisfied'
+        unit:
+          $ref: '#/components/schemas/ProductUnit'
+          description: 'quantity related unit of product'
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+          description: 'defines if the delivery of an requested quantity has to be delivered in one or possibly parially'
+        minimalQuantity:
+          type: number
+          description: 'minimal quantity to reserve in case the complete quatity cannot be covered. Field only relevant in deliveryMode partial'
+
+    OptionProperty:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+
+    PlantingReservationRspDTO:
+      type: object
+      properties:
+        reservationStatus:
+          $ref: '#/components/schemas/ReservationStatus'
+        reservationId:
+          type: string
+          description: 'reservation id of the reservation'
+        inquiryId: 
+          type: string
+          description: 'uuid to correlate the reservation to one order'
+        productId:
+          type: string
+          description: 'product identifier'
+        productname: 
+          type: string
+          description: 'short description such as name of the product'
+        expectedDelivery:
+          type: string
+          format: date-time
+          description: 'expected delivery date of the amount of the product'
+        planedDelivery:
+          type: string
+          format: date-time
+          description: 'requested delivery date of the amount of the product'
+        requiredQty: 
+          type: number
+          description: 'requested quantity of product to grow and deliver'
+        expecteQty: 
+          type: number
+          description: 'expected quantity of product to grow and deliver'
+        unit:
+          $ref: '#/components/schemas/ProductUnit'
+          description: 'quantity related unit of product'
+        deliveryMode:
+          $ref: '#/components/schemas/DeliveryMode'
+          description: 'defines if the delivery of an requested quantity has to be delivered in one or possibly parially'
+        minimalQuantity:
+          type: number
+          description: 'minimal quantity to reserve in case the complete quatity cannot be covered. Field only relevant in deliveryMode partial'
+
+    PlantingOrderReqDTO: 
+      type: object
+      properties:
+        delivery:
+          type: string
+          description: 'time the request was issued'
+          format: date-time
+        origin:
+          type: string
+          description: 'logical name of the requestor'
+        textMsg:
+          type: string
+          format: string
+          description: 'content of the test message'
+
+    PlantingOrderRspDTO: 
+      type: object
+      properties:
+        delivery:
+          type: string
+          description: 'time the request was issued'
+          format: date-time
+        origin:
+          type: string
+          description: 'logical name of the requestor'
+        textMsg:
+          type: string
+          format: string
+          description: 'content of the test message'
+
+    PlantingCancellationReqDTO:
+      type: object
+      properties:
+        delivery:
+          type: string
+          description: 'time the request was issued'
+          format: date-time
+        origin:
+          type: string
+          description: 'logical name of the requestor'
+        textMsg:
+          type: string
+          format: string
+          description: 'content of the test message'    
+
+    PlantingCancellationRspDTO:
+      type: object
+      properties:
+        delivery:
+          type: string
+          description: 'time the request was issued'
+          format: date-time
+        origin:
+          type: string
+          description: 'logical name of the requestor'
+        textMsg:
+          type: string
+          format: string
+          description: 'content of the test message'    
+
+    PlantingStatusEvtDTO:
+      type: object
+      properties:
+        delivery:
+          type: string
+          description: 'time the request was issued'
+          format: date-time
+        origin:
+          type: string
+          description: 'logical name of the requestor'
+        textMsg:
+          type: string
+          format: string
+          description: 'content of the test message'
+        options: 
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionProperty'
+        options2:
+          type: array
+          items:
+            type: string
+        options3:
+          type: array
+          items:
+            properties:
+              optfld1:
+                type: string
+              optfld2:
+                type: number
+              optfld3:
+                type: string
+                description: 'time the request was issued'
+                format: date-time
+
+    ProductUnit:
+      type: string
+      enum: 
+        - 'kg'
+        - 'tons'
+        - 'liter'
+        - 'm3'
+      description: 'quantity related unit of product'
+   
+    DeliveryMode:
+      type: string
+      enum: 
+          - 'complete'  
+          - 'parital'
+          - 'undefined'
+      description: 'defines if the delivery of an requested quantity has to be delivered in one or possibly parially'
+    
+    ReservationStatus:
+      type: string
+      enum:
+        - 'reserved'
+        - 'parialresv'
+        - 'failed'
+        - 'canceled'
+        - 'expired'
+   
+    CompletionData:
+      type: object
+      properties:
+        responseCode:
+          type: integer
+          description: 'Error code 0 = success <0 error codes >0 completion code'
+        responseMessage:
+          type: string
+          description: 'individual human readable completion message'
+  
+  parameters:
+      greenhouse-no:
+        description: The greenhouse number
+        schema:
+          type: string
+          format: '{0-9}{0-9}'

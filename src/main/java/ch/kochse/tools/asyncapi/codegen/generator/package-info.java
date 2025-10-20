@@ -1,0 +1,1 @@
+package ch.kochse.tools.asyncapi.codegen.generator;
