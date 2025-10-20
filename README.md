@@ -28,7 +28,7 @@ GNU GENERAL PUBLIC LICENSE Version 3
 ```
 java -jar build/libs/asyncapi-generator-1.1.0.jar --output ./build/generated/src/main/java 
 --input ./src/test/resources/api/asyncapi.yaml --target java
--p ch.kochse.api.test --version scmVersion.version 
+-p ch.kochse.api.test --version v1.0.0 
  
 ```
 
@@ -76,6 +76,12 @@ There are predefined properties which control the generation process and which a
 
 This project uses the [Gradle Build Tool](https://gradle.org/) to build and
 release artifacts. More specifics you find under [Gradle Help](./GradleHelp.md)
+
+### Build asyncapi-generator
+
+```
+./gradlew clean build
+```
 
 ### Use asyncapi-generator Within a Build
 

@@ -28,7 +28,7 @@ first before resorting to the globally installed Gradle binary. In this case you
 would run any build task in the format:
 
 ```sh
-$ gw <task>
+$ ./gradlew <task>
 ```
 
 ## Release-Handling
