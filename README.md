@@ -26,7 +26,7 @@ GNU GENERAL PUBLIC LICENSE Version 3
 ### Example of Usage
 
 ```
-java -jar build/libs/asyncapi-generator-1.0.15.jar --output ./build/generated/src/main/java 
+java -jar build/libs/asyncapi-generator-1.1.0.jar --output ./build/generated/src/main/java 
 --input ./src/test/resources/api/asyncapi.yaml --target java
 -p ch.kochse.api.test --version scmVersion.version 
  
